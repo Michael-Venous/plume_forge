@@ -251,7 +251,7 @@ def _mesh_state(participant, depsgraph, payload, frame):
         topology_version = frame
         reuse_geometry = False
     else:
-        track_deformation = _static_mesh_cache_key(obj, props) is None
+        track_deformation = _static_mesh_cache_key(obj, depsgraph, props) is None
         matrix = obj.evaluated_get(depsgraph).matrix_world.copy()
         positions, indices, velocities, position_version, topology_version, reuse_geometry = _cached_or_evaluated_mesh(
             participant,

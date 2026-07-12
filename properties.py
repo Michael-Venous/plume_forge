@@ -321,7 +321,7 @@ class PlumeForgeSettings(PropertyGroup):
 
     sparse_block_capacity: IntProperty(
         name="Sparse Block Capacity",
-        description="Maximum resident Flow sparse blocks; controls the GPU memory ceiling independently of resolution",
+        description="Small-block-equivalent Flow capacity used as the GPU memory ceiling; standard blocks use one-eighth as many locations because each holds eight times more voxels",
         default=16384,
         min=256,
         max=524288,

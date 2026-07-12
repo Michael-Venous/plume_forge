@@ -31,7 +31,7 @@ def _evaluated_mesh(obj, depsgraph, props, matrix):
 
 
 def _cached_or_evaluated_mesh(participant, obj, depsgraph, props, matrix, frame):
-    key = _static_mesh_cache_key(obj, props)
+    key = _static_mesh_cache_key(obj, depsgraph, props)
     if key is not None and participant.get("static_mesh_key") == key:
         cached = participant.get("static_mesh")
         if cached is not None:
@@ -55,7 +55,7 @@ def _cached_or_evaluated_mesh(participant, obj, depsgraph, props, matrix, frame)
     return positions, indices, velocities, position_version, topology_version, False
 
 
-def _static_mesh_cache_key(obj, props):
+def _static_mesh_cache_key(obj, depsgraph, props):
     if obj.type != "MESH" or obj.modifiers or obj.data.shape_keys:
         return None
     if abs(float(props.normal_velocity)) > 1e-6:
@@ -63,8 +63,10 @@ def _static_mesh_cache_key(obj, props):
     if str(getattr(props, "mesh_emission_mask_attribute", "") or "").strip():
         return None
     mesh = obj.data
+    evaluated_mesh = obj.evaluated_get(depsgraph).data
     return (
         mesh.as_pointer(),
+        evaluated_mesh.as_pointer(),
         geometry_revision(mesh),
         len(mesh.vertices),
         len(mesh.polygons),
