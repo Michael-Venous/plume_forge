@@ -83,7 +83,7 @@ class PlumeForgeSettings(PropertyGroup):
         ],
         default="mesh",
     )
-    
+
     # Emitter Settings
     emitter_radius: FloatProperty(
         name="Emitter Radius",
@@ -92,7 +92,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.01,
         subtype="DISTANCE",
     )
-    
+
     emitter_temperature: FloatProperty(
         name="Emitter Temperature",
         description="Source temperature before the domain Temperature Input Scale is applied",
@@ -100,7 +100,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.0,
         soft_max=5.0,
     )
-    
+
     emitter_smoke: FloatProperty(
         name="Smoke Density",
         description="Density of emitted smoke",
@@ -248,7 +248,7 @@ class PlumeForgeSettings(PropertyGroup):
         soft_min=-250,
         soft_max=250,
     )
-    
+
     resolution: IntProperty(
         name="Resolution",
         description="Simulation detail; maps to cell size as 32 divided by this value and does not define a fixed domain",
@@ -391,14 +391,14 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.001,
         soft_max=4.0,
     )
-    
+
     # Output Settings
     output_prefix: StringProperty(
         name="Output Prefix",
         description="Prefix for output files",
         default="",
     )
-    
+
     output_dir: StringProperty(
         name="Output Directory",
         description="Directory for output files",
@@ -445,7 +445,7 @@ class PlumeForgeSettings(PropertyGroup):
         ],
         default="active_mask",
     )
-    
+
     # Object References
     emitter_collection: PointerProperty(
         name="Emitters Collection",
@@ -497,7 +497,7 @@ class PlumeForgeSettings(PropertyGroup):
         description="Collection of mesh objects that remove smoke, fire, and fuel from this simulation",
         type=bpy.types.Collection,
     )
-    
+
     particle_system_name: StringProperty(
         name="Particle System",
         description="Name of the particle system to use as emitter (for particles emitter type)",
@@ -759,7 +759,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=2,
         max=16,
     )
-    
+
     # Advanced Settings
     gravity: FloatVectorProperty(
         name="Gravity",
@@ -848,7 +848,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.0,
         soft_max=10.0,
     )
-    
+
     vorticity: FloatProperty(
         name="Vorticity",
         description="Vorticity confinement strength",
@@ -856,7 +856,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.0,
         max=10.0,
     )
-    
+
     dissipation: FloatProperty(
         name="Dissipation",
         description="Smoke dissipation rate",

@@ -419,5 +419,3 @@ def _vector_attr(attrs, explicit, fallbacks, index, default):
     if hasattr(value, "value"):
         return (float(value.value), 0.0, 0.0)
     return default
-
-

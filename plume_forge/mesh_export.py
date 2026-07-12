@@ -256,6 +256,3 @@ def _add_mesh_initial_velocity(velocities, positions, matrix, initial_velocity):
         velocities[offset] += initial.x
         velocities[offset + 1] += initial.y
         velocities[offset + 2] += initial.z
-
-
-
