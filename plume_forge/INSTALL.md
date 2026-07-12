@@ -4,7 +4,7 @@
 
 - Blender 5.1 or newer
 - A supported 64-bit platform matching the downloaded package
-- An NVIDIA GPU with current Vulkan-capable drivers
+- A GPU listed as supported for the downloaded release, with current drivers
 - Enough GPU memory for the chosen sparse-grid resolution
 
 ## Install
@@ -33,7 +33,7 @@ disk. Keep a backup of production `.blend` files before upgrading beta builds.
 ## Troubleshooting
 
 - Verify that the package platform matches the operating system.
-- Update the NVIDIA driver before reporting Vulkan or device creation errors.
+- Update the GPU driver before reporting Vulkan or device creation errors.
 - Keep cache output on a local writable drive with sufficient free space.
 - Include Blender's console output, Blender version, GPU model, driver version,
   and a minimal `.blend` reproduction with support requests.
