@@ -1,17 +1,17 @@
 # Plume Forge Blender Integration
 
-This repository contains the GPL-licensed Python integration layer for Plume
-Forge, an interactive GPU smoke and fire simulator for Blender.
+This repository contains the GPL-licensed Blender integration layer for Plume
+Forge, an interactive GPU smoke and fire simulator.
 
 ## Source Boundary
 
-The files under `plume_forge/` integrate with Blender's Python API and are
+The files at this repository's root integrate with Blender's Python API and are
 licensed under GPL-3.0-or-later. The separately distributed simulation bridge,
 NVIDIA Flow runtime, and other native dependencies are not included here.
 
-This source snapshot is therefore not a complete runnable product. Customers
-receive the matching platform package, including the native runtime, from the
-authorized storefront where they purchased Plume Forge.
+This is the addon source root used by Blender extensions. It is not a complete
+runnable product: customers receive a matching Linux or Windows package,
+including the native runtime, from the authorized storefront.
 
 ## License
 

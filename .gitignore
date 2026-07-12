@@ -1,4 +1,8 @@
 __pycache__/
 *.py[cod]
+.pytest_cache/
+bin/
+*.vdb
+plume_forge_cache/
 .DS_Store
 Thumbs.db
