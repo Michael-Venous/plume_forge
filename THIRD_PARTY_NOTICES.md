@@ -25,10 +25,8 @@ The packaged runtime may include:
 | XZ Utils | mixed public-domain, LGPL, and GPL terms |
 | GCC runtime libraries | GPL with GCC Runtime Library Exception |
 
-NVIDIA copyright and license text is reproduced in the private source tree at
-`vendor/PhysX/LICENSE.md`. Release engineering must include complete applicable
-license texts for every binary shipped by a particular platform package before
-public sale. See `sell/RELEASE_CHECKLIST.md` in the private source repository.
+Release engineering must include complete applicable license texts for every
+binary shipped by a particular platform package before public sale.
 
 Project home pages:
 
