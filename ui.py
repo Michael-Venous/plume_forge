@@ -104,10 +104,7 @@ def _draw_emitter_shape(box, obj, props):
         elif props.gn_subtype == "mesh":
             _draw_mesh_emitter_options(box, props)
         elif props.gn_subtype == "volume":
-            box.label(
-                text="Experimental: procedural volume data may be unavailable",
-                icon="ERROR",
-            )
+            box.label(text="Uses evaluated Geometry Nodes volume grids")
     elif props.participant_type == "openvdb":
         box.prop(props, "volume_filepath")
 
@@ -366,6 +363,8 @@ class PLUMEFORGE_PT_main(Panel):
                 _draw_effector(content, props)
             elif props.smoke_object_type == "outflow":
                 _draw_outflow(content, props)
+            elif props.smoke_object_type == "none":
+                content.label(text="Excluded from Plume Forge simulations")
 
 
 CLASSES = (PLUMEFORGE_PT_main,)

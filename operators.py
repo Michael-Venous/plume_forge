@@ -157,7 +157,6 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
     _submitted = False
     _completed_frames = ()
     _session_signature = None
-    _ignore_session_complete = False
     _timer_interval = 0.001
     _next_submit_at = 0.0
 
@@ -237,8 +236,8 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
         self._prefix = session["output_prefix"]
         self._session_signature = signature
         self._next_submit_at = 0.0
-        self._ignore_session_complete = True
-        self._worker.restart_session(session)
+        self._loop_reset_started = time.perf_counter()
+        self._worker.reset_session(session)
 
     def _ready_to_submit(self, context):
         return time.monotonic() >= getattr(self, "_next_submit_at", 0.0)

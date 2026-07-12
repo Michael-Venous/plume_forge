@@ -10,6 +10,7 @@ from .protocol import (
     FRAME,
     SESSION_BEGIN,
     SESSION_END,
+    SESSION_RESET,
     read_message,
     write_message,
 )
@@ -37,10 +38,9 @@ class BridgeWorker:
     def end_session(self):
         self._requests.put_nowait((SESSION_END, {}, b""))
 
-    def restart_session(self, session):
+    def reset_session(self, session):
         self._session = session
-        self._requests.put_nowait((SESSION_END, {}, b""))
-        self._requests.put_nowait((SESSION_BEGIN, session, b""))
+        self._requests.put_nowait((SESSION_RESET, session, b""))
 
     def cancel(self):
         self._cancel_requested.set()
@@ -107,7 +107,7 @@ class BridgeWorker:
                     write_message(self._process.stdin, SESSION_END, {})
                     self._receive()
                     break
-                if message_type == SESSION_BEGIN:
+                if message_type in {SESSION_BEGIN, SESSION_RESET}:
                     continue
                 if message_type in {CANCEL, SESSION_END} and not self._keep_alive:
                     break

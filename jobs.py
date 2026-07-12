@@ -143,6 +143,17 @@ class FrameRangeJob:
                 continue
             if message_type == SESSION_ACCEPTED:
                 self._accepted = True
+                reset_started = getattr(self, "_loop_reset_started", None)
+                if reset_started is not None:
+                    total_ms = (time.perf_counter() - reset_started) * 1000.0
+                    flow_ms = float(data.get("session_reset_ms", 0.0))
+                    self._last_loop_reset_ms = total_ms
+                    self._last_loop_flow_reset_ms = flow_ms
+                    print(
+                        "Plume Forge preview loop reset: "
+                        f"total={total_ms:.3f}ms flow={flow_ms:.3f}ms"
+                    )
+                    self._loop_reset_started = None
                 if self._stop_requested:
                     if not self._ending_session:
                         self._ending_session = True

@@ -23,6 +23,7 @@ class PlumeForgeSettings(PropertyGroup):
             ("collider", "Collider", "Collide with smoke in a domain that references this object"),
             ("effector", "Effector", "Apply velocity forces to smoke in a domain"),
             ("outflow", "Outflow", "Remove smoke, fire, and fuel inside this object"),
+            ("none", "None", "Exclude this object from Plume Forge simulations"),
         ],
         default="domain",
     )
@@ -55,8 +56,8 @@ class PlumeForgeSettings(PropertyGroup):
             ("mesh", "Mesh", "Use the evaluated mesh output as a mesh emitter"),
             (
                 "volume",
-                "Volume (Experimental)",
-                "Experimental: Blender may not expose procedural Geometry Nodes volume data to addons",
+                "Volume",
+                "Use evaluated Geometry Nodes volume grids",
             ),
         ],
         default="point_cloud",

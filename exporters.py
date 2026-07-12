@@ -384,9 +384,11 @@ def _stage_gn_volume(obj, depsgraph, frame, directory):
     if not directory:
         raise RuntimeError("Geometry Nodes volume staging is unavailable")
     evaluated = obj.evaluated_get(depsgraph)
-    volume = getattr(getattr(evaluated, "data", None), "volume", None)
+    geometry = evaluated.evaluated_geometry()
+    volume = getattr(geometry, "volume", None)
     if volume is None:
-        volume = getattr(evaluated, "volume", None)
+        data = getattr(evaluated, "data", None)
+        volume = data if hasattr(data, "grids") else None
     if volume is None:
         raise RuntimeError(f"{obj.name} has no evaluated volume output")
 

@@ -38,4 +38,5 @@ disk. Keep a backup of production `.blend` files before upgrading beta builds.
 - Include Blender's console output, Blender version, GPU model, driver version,
   and a minimal `.blend` reproduction with support requests.
 
-Geometry Nodes Volume emission is experimental in this release.
+Geometry Nodes Volume emission uses Blender's evaluated volume grids and stages
+them as temporary VDB input for the bridge.
