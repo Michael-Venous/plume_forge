@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "plume_forge"
-version = "1.0.0"
+version = "0.1.0"
 name = "Plume Forge"
 tagline = "Interactive GPU smoke and fire simulation"
 maintainer = "Plume Forge"

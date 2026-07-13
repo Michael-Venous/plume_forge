@@ -25,7 +25,7 @@ class PlumeForgeSettings(PropertyGroup):
             ("outflow", "Outflow", "Remove smoke, fire, and fuel inside this object"),
             ("none", "None", "Exclude this object from Plume Forge simulations"),
         ],
-        default="domain",
+        default="none",
     )
 
     participant_enabled: BoolProperty(

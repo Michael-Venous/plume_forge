@@ -223,6 +223,7 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
         self._ending_session = False
         self._completed_frames = []
         self._resolution_scale = _preview_resolution_scale(domain)
+        domain.plume_forge.baked_frames = 0
         session, self._participants = build_session(
             context,
             start_frame=start,
@@ -291,9 +292,7 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
         domain = bpy.data.objects.get(self._domain_name)
         if domain is None:
             return self._cancelled(context, {"message": "The active Plume Forge domain was deleted"})
-        start, _end = simulation_frame_range(domain)
         try:
-            context.scene.frame_set(start)
             self._restart_preview_session(context, domain)
         except Exception as error:
             return self._cancelled(context, {"message": str(error)})

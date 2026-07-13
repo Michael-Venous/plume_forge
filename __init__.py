@@ -1,7 +1,7 @@
 bl_info = {
     "name": "PlumeForge",
     "author": "PlumeForge",
-    "version": (1, 0, 0),
+    "version": (0, 1, 0),
     "blender": (5, 1, 0),
     "location": "Properties > Physics",
     "description": "PhysX Flow smoke simulation addon",

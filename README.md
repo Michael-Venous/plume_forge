@@ -1,5 +1,7 @@
 # Plume Forge Blender Integration
 
+Current release: **0.1.0 Beta**.
+
 This repository contains the GPL-licensed Blender integration layer for Plume
 Forge, an interactive GPU smoke and fire simulator.
 
