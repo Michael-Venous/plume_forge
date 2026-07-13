@@ -89,6 +89,7 @@ def session_structure_signature(domain):
     participants = _participants(props)
     return (
         int(props.sparse_block_capacity),
+        bool(props.small_sparse_blocks),
         sim_start,
         sim_end,
         _collection_signature(props.emitter_collection),
