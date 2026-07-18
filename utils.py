@@ -1,6 +1,8 @@
 import os
 import sys
 import hashlib
+import stat
+import tempfile
 
 import bpy
 
@@ -29,7 +31,12 @@ def runtime_validation_error():
         return f"Plume Forge bridge executable is missing: {executable}"
     prefs = get_addon_preferences()
     if prefs and getattr(prefs, "executable_path", ""):
+        if sys.platform != "win32" and not os.access(executable, os.X_OK):
+            return f"Custom Plume Forge bridge is not executable: {executable}"
         return ""
+    permission_error = _repair_bundled_executable(executable)
+    if permission_error:
+        return permission_error
     libs = os.path.join(addon_directory(), "bin", "libs")
     missing = [
         name for name in required_flow_libraries()
@@ -37,6 +44,22 @@ def runtime_validation_error():
     ]
     if missing:
         return "Plume Forge runtime is missing: " + ", ".join(missing)
+    return ""
+
+
+def _repair_bundled_executable(executable):
+    if sys.platform == "win32" or os.access(executable, os.X_OK):
+        return ""
+    try:
+        mode = os.stat(executable).st_mode
+        os.chmod(executable, mode | stat.S_IXUSR)
+    except OSError as error:
+        return f"Plume Forge could not make its bridge executable: {error}"
+    if not os.access(executable, os.X_OK):
+        return (
+            "Plume Forge bridge execution is blocked by the filesystem: "
+            f"{executable}"
+        )
     return ""
 
 
@@ -68,7 +91,19 @@ def base_output_directory_for_object(obj):
     configured = obj.plume_forge.output_dir.strip()
     if not configured:
         configured = "//plume_forge_cache/"
-    return os.path.normpath(bpy.path.abspath(configured))
+    resolved = bpy.path.abspath(configured)
+    if os.path.isabs(resolved):
+        return os.path.normpath(resolved)
+    if not bpy.data.filepath:
+        user_cache = bpy.utils.user_resource(
+            "DATAFILES",
+            path="plume_forge_cache",
+            create=True,
+        )
+        if user_cache and os.path.isabs(user_cache):
+            return os.path.normpath(user_cache)
+        return os.path.join(tempfile.gettempdir(), "plume_forge_cache")
+    return os.path.normpath(os.path.abspath(resolved))
 
 
 def cache_identity_for_object(obj):

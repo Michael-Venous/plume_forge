@@ -11,6 +11,12 @@ from bpy.props import (
 from bpy.types import PropertyGroup
 
 
+def _preview_display_updated(_self, _context):
+    from .preview import refresh_preview_display
+
+    refresh_preview_display()
+
+
 class PlumeForgeSettings(PropertyGroup):
     """Custom PropertyGroup storing all simulation parameters for PlumeForge smoke simulation."""
 
@@ -253,7 +259,7 @@ class PlumeForgeSettings(PropertyGroup):
     resolution: IntProperty(
         name="Resolution",
         description="Simulation detail; maps to cell size as 32 divided by this value and does not define a fixed domain",
-        default=64,
+        default=256,
         min=16,
         max=4096,
         soft_max=4096,
@@ -292,6 +298,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.05,
         max=40.0,
         soft_max=40.0,
+        update=_preview_display_updated,
     )
 
     preview_color: FloatVectorProperty(
@@ -302,6 +309,7 @@ class PlumeForgeSettings(PropertyGroup):
         max=1.0,
         size=3,
         subtype="COLOR",
+        update=_preview_display_updated,
     )
 
     preview_opacity: FloatProperty(
@@ -311,6 +319,7 @@ class PlumeForgeSettings(PropertyGroup):
         min=0.0,
         max=1.0,
         subtype="FACTOR",
+        update=_preview_display_updated,
     )
 
     preview_bake: BoolProperty(

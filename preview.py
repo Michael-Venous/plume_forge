@@ -2,8 +2,6 @@ import time
 
 import bpy
 import gpu
-from bpy_extras import view3d_utils
-from mathutils import Vector
 
 PREVIEW_MARKER = "plume_forge_preview"
 PREVIEW_NAME = "PlumeForge Preview"
@@ -36,16 +34,9 @@ def update_density_points(domain, data, payload):
     vertex_buffer = gpu.types.GPUVertBuf(format=_vertex_format(), len=count)
     vertex_buffer.attr_fill("pos", positions)
     batch = gpu.types.GPUBatch(type="POINTS", buf=vertex_buffer)
-    center = Vector((
-        float(preview.get("center_x", domain.location.x)),
-        float(preview.get("center_y", domain.location.y)),
-        float(preview.get("center_z", domain.location.z)),
-    ))
-
     _PREVIEWS[domain.name] = {
-        "center": center,
-        "world_size": _world_point_size(domain, preview),
-        "color": _point_color(domain),
+        "domain_name": domain.name,
+        "point_size": max(0.001, float(preview.get("point_size", 0.1))),
         "buffer": vertex_buffer,
         "batch": batch,
     }
@@ -80,19 +71,35 @@ def clear_all_previews():
     _tag_viewports()
 
 
+def refresh_preview_display():
+    _tag_viewports()
+
+
 def _draw_previews():
     if not _PREVIEWS:
+        return
+    region = bpy.context.region
+    if region is None:
         return
     shader = _shader()
     gpu.state.blend_set("ALPHA")
     try:
+        projection = gpu.matrix.get_projection_matrix()
+        shader.bind()
+        shader.uniform_float(
+            "ModelViewProjectionMatrix",
+            projection @ gpu.matrix.get_model_view_matrix(),
+        )
+        shader.uniform_float("ProjectionMatrix", projection)
+        shader.uniform_float("viewportSize", (region.width, region.height))
         for preview in tuple(_PREVIEWS.values()):
-            gpu.state.point_size_set(_screen_point_size(preview))
-            shader.bind()
-            shader.uniform_float("color", preview["color"])
+            domain = bpy.data.objects.get(preview["domain_name"])
+            if domain is None:
+                continue
+            shader.uniform_float("worldSize", _world_point_size(domain, preview))
+            shader.uniform_float("color", _point_color(domain))
             preview["batch"].draw(shader)
     finally:
-        gpu.state.point_size_set(1.0)
         gpu.state.blend_set("NONE")
 
 
@@ -120,7 +127,34 @@ def _remove_draw_handler():
 def _shader():
     global _SHADER
     if _SHADER is None:
-        _SHADER = gpu.shader.from_builtin("UNIFORM_COLOR")
+        info = gpu.types.GPUShaderCreateInfo()
+        info.push_constant("MAT4", "ModelViewProjectionMatrix")
+        info.push_constant("MAT4", "ProjectionMatrix")
+        info.push_constant("VEC2", "viewportSize")
+        info.push_constant("FLOAT", "worldSize")
+        info.push_constant("VEC4", "color")
+        info.vertex_in(0, "VEC3", "pos")
+        info.fragment_out(0, "VEC4", "FragColor")
+        info.vertex_source("""
+            void main()
+            {
+                vec4 clip = ModelViewProjectionMatrix * vec4(pos, 1.0);
+                gl_Position = clip;
+                float depth = max(abs(clip.w), 1e-6);
+                gl_PointSize = max(
+                    1.0,
+                    worldSize * viewportSize.y * 0.5 *
+                    abs(ProjectionMatrix[1][1]) / depth
+                );
+            }
+        """)
+        info.fragment_source("""
+            void main()
+            {
+                FragColor = color;
+            }
+        """)
+        _SHADER = gpu.shader.create_from_info(info)
     return _SHADER
 
 
@@ -138,27 +172,8 @@ def _vertex_format():
 
 
 def _world_point_size(domain, preview):
-    base = max(0.001, float(preview.get("point_size", 0.1)))
     scale = max(0.05, float(getattr(domain.plume_forge, "preview_dot_size", 1.0)))
-    return base * scale * 0.1
-
-
-def _screen_point_size(preview):
-    region = bpy.context.region
-    region_data = bpy.context.region_data
-    if region is None or region_data is None:
-        return 1.0
-    center = preview["center"]
-    view_right = region_data.view_matrix.inverted().col[0].xyz.normalized()
-    first = view3d_utils.location_3d_to_region_2d(region, region_data, center)
-    second = view3d_utils.location_3d_to_region_2d(
-        region,
-        region_data,
-        center + view_right * preview["world_size"],
-    )
-    if first is None or second is None:
-        return 1.0
-    return max(1.0, min(128.0, (second - first).length))
+    return preview["point_size"] * scale * 0.1
 
 
 def _point_color(domain):

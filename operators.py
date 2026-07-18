@@ -215,6 +215,7 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
     def _restart_preview_session(self, context, domain):
         signature = session_structure_signature(domain)
         start, end = simulation_frame_range(domain)
+        clear_preview(domain)
         self._frame = start
         self._end_frame = end
         self._submitted = False
