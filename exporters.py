@@ -68,6 +68,9 @@ def build_session(
         "vdb_compression": getattr(domain.plume_forge, "vdb_compression", "active_mask"),
         "write_vdb": bool(write_vdb),
         "preview_enabled": bool(preview_enabled),
+        "flow_profile_enabled": os.environ.get(
+            "PLUME_FORGE_FLOW_PROFILE", ""
+        ).strip().lower() in {"1", "true", "yes", "on"},
         "preview_max_points": _preview_max_points(domain.plume_forge, preview_max_points),
         "initial_domain": _domain_state(domain.plume_forge, resolution_scale),
     }

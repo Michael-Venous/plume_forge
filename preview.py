@@ -82,7 +82,10 @@ def _draw_previews():
     if region is None:
         return
     shader = _shader()
+    uses_program_point_size = gpu.platform.backend_type_get() == "OPENGL"
     gpu.state.blend_set("ALPHA")
+    if uses_program_point_size:
+        gpu.state.program_point_size_set(True)
     try:
         projection = gpu.matrix.get_projection_matrix()
         shader.bind()
@@ -100,6 +103,8 @@ def _draw_previews():
             shader.uniform_float("color", _point_color(domain))
             preview["batch"].draw(shader)
     finally:
+        if uses_program_point_size:
+            gpu.state.program_point_size_set(False)
         gpu.state.blend_set("NONE")
 
 

@@ -69,22 +69,17 @@ class FrameRangeJob:
         self._completed_frames = list(completed_frames or [])
         self._cache_lock = None
 
-        previous = context.view_layer.objects.active
-        context.view_layer.objects.active = domain
-        try:
-            session, self._participants = build_session(
-                context,
-                start_frame=self._frame,
-                end_frame=self._end_frame,
-                domain=domain,
-                write_vdb=write_vdb,
-                preview_enabled=preview_enabled,
-                preview_max_points=preview_max_points,
-                resolution_scale=resolution_scale,
-                log_participants=True,
-            )
-        finally:
-            context.view_layer.objects.active = previous
+        session, self._participants = build_session(
+            context,
+            start_frame=self._frame,
+            end_frame=self._end_frame,
+            domain=domain,
+            write_vdb=write_vdb,
+            preview_enabled=preview_enabled,
+            preview_max_points=preview_max_points,
+            resolution_scale=resolution_scale,
+            log_participants=True,
+        )
 
         self._prefix = session["output_prefix"]
         if not all(character.isalnum() or character in "._-" for character in self._prefix):
@@ -210,19 +205,14 @@ class FrameRangeJob:
         timing_start = time.perf_counter()
         self._evaluate_frame(context)
         timing_evaluated = time.perf_counter()
-        previous = context.view_layer.objects.active
-        context.view_layer.objects.active = domain
-        try:
-            packet = build_frame(
-                context,
-                self._frame,
-                self._participants,
-                domain=domain,
-                resolution_scale=getattr(self, "_resolution_scale", 1.0),
-                volume_stage_dir=self._volume_staging.name,
-            )
-        finally:
-            context.view_layer.objects.active = previous
+        packet = build_frame(
+            context,
+            self._frame,
+            self._participants,
+            domain=domain,
+            resolution_scale=getattr(self, "_resolution_scale", 1.0),
+            volume_stage_dir=self._volume_staging.name,
+        )
         timing_packet = time.perf_counter()
         self._worker.send_frame(packet)
         timing_sent = time.perf_counter()
@@ -239,7 +229,6 @@ class FrameRangeJob:
 
     def _evaluate_frame(self, context):
         context.scene.frame_set(self._frame)
-        context.view_layer.update()
 
     def _frame_complete(self, context, data, payload):
         domain = bpy.data.objects.get(self._domain_name)
@@ -290,10 +279,25 @@ class FrameRangeJob:
             f"vdb_queue={float(data.get('bridge_vdb_queue_wait_ms', 0.0)):.3f}ms "
             f"vdb_convert={float(data.get('bridge_vdb_convert_ms', 0.0)):.3f}ms "
             f"vdb_file={float(data.get('bridge_vdb_file_write_ms', 0.0)):.3f}ms "
+            f"vdb_mem={int(data.get('bridge_vdb_in_flight_bytes', 0)) / (1024 * 1024):.1f}MiB "
             f"blocks={int(data.get('flow_active_blocks', 0))} "
             f"flow_mem={int(data.get('flow_device_memory_bytes', 0)) / (1024 * 1024):.1f}MiB "
             f"post={handler_ms:.3f}ms"
         )
+        profile_frame = int(data.get("flow_gpu_profile_frame", -1))
+        if profile_frame >= 0:
+            print(
+                f"  flow gpu frame {profile_frame}: "
+                f"total={float(data.get('flow_gpu_total_ms', 0.0)):.3f}ms "
+                f"alloc={float(data.get('flow_gpu_allocation_ms', 0.0)):.3f}ms "
+                f"density={float(data.get('flow_gpu_density_ms', 0.0)):.3f}ms "
+                f"velocity={float(data.get('flow_gpu_velocity_ms', 0.0)):.3f}ms "
+                f"pressure={float(data.get('flow_gpu_pressure_ms', 0.0)):.3f}ms "
+                f"vorticity={float(data.get('flow_gpu_vorticity_ms', 0.0)):.3f}ms "
+                f"emitters={float(data.get('flow_gpu_emitter_ms', 0.0)):.3f}ms "
+                f"nanovdb={float(data.get('flow_gpu_nanovdb_ms', 0.0)):.3f}ms "
+                f"other={float(data.get('flow_gpu_other_ms', 0.0)):.3f}ms"
+            )
 
         if self._stop_requested:
             if not self._ending_session:
