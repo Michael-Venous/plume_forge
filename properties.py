@@ -973,6 +973,20 @@ class PlumeForgeSettings(PropertyGroup):
         options={"HIDDEN"},
     )
 
+    bake_peak_vram_mb: FloatProperty(
+        name="Bake Peak VRAM",
+        description="Peak Flow device memory used during the last bake in MiB",
+        default=0.0,
+        options={"HIDDEN"},
+    )
+
+    bake_peak_ram_mb: FloatProperty(
+        name="Bake Peak RAM",
+        description="Peak combined Blender and bridge working set during the last bake in MiB",
+        default=0.0,
+        options={"HIDDEN"},
+    )
+
     # UI-only organization flags. These do not affect the simulation.
     show_panel_advanced: BoolProperty(
         name="Advanced",

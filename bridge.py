@@ -3,6 +3,24 @@ import queue
 import subprocess
 import threading
 
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+
+    class _ProcessMemoryCounters(ctypes.Structure):
+        _fields_ = [
+            ("cb", wintypes.DWORD),
+            ("PageFaultCount", wintypes.DWORD),
+            ("PeakWorkingSetSize", ctypes.c_size_t),
+            ("WorkingSetSize", ctypes.c_size_t),
+            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+            ("PagefileUsage", ctypes.c_size_t),
+            ("PeakPagefileUsage", ctypes.c_size_t),
+        ]
+
 from .protocol import (
     CANCEL,
     CANCELLED,
@@ -76,6 +94,10 @@ class BridgeWorker:
 
     def stderr(self):
         return "".join(self._stderr).strip()
+
+    def memory_bytes(self):
+        process = self._process
+        return process_memory_bytes(process.pid) if process else 0
 
     def _run(self):
         try:
@@ -165,3 +187,45 @@ def _popen_options():
     if os.name == "nt":
         return {"creationflags": subprocess.CREATE_NO_WINDOW}
     return {"start_new_session": True}
+
+
+def process_memory_bytes(pid):
+    """Return a process working set without requiring third-party packages."""
+    if os.name == "nt":
+        return _windows_process_memory_bytes(pid)
+    try:
+        with open(f"/proc/{int(pid)}/statm", encoding="ascii") as status:
+            resident_pages = int(status.read().split()[1])
+        return resident_pages * os.sysconf("SC_PAGE_SIZE")
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def _windows_process_memory_bytes(pid):
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    psapi.GetProcessMemoryInfo.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(_ProcessMemoryCounters),
+        wintypes.DWORD,
+    ]
+    psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+    handle = kernel32.OpenProcess(0x1000 | 0x0010, False, int(pid))
+    if not handle:
+        return 0
+    try:
+        counters = _ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        if not psapi.GetProcessMemoryInfo(
+            handle,
+            ctypes.byref(counters),
+            counters.cb,
+        ):
+            return 0
+        return int(counters.WorkingSetSize)
+    finally:
+        kernel32.CloseHandle(handle)

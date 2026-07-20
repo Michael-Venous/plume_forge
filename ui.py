@@ -210,6 +210,36 @@ def _draw_outflow(layout, props):
     box.prop(props, "motion_velocity_scale", text="Motion Velocity")
 
 
+def _compact_time(seconds):
+    seconds = float(seconds)
+    if seconds <= 0.0:
+        return "N/A"
+    if seconds < 60.0:
+        return f"{seconds:.1f}s"
+    minutes, seconds = divmod(int(round(seconds)), 60)
+    if minutes < 60:
+        return f"{minutes}m{seconds:02d}s"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}h{minutes:02d}m"
+
+
+def _compact_memory(mebibytes):
+    mebibytes = float(mebibytes)
+    if mebibytes <= 0.0:
+        return "N/A"
+    if mebibytes >= 1024.0:
+        return f"{mebibytes / 1024.0:.1f}G"
+    return f"{mebibytes:.0f}M"
+
+
+def _bake_summary(props, state):
+    return (
+        f"{state}: {props.baked_frames} frames | {_compact_time(props.bake_elapsed)} | "
+        f"VRAM {_compact_memory(props.bake_peak_vram_mb)} | "
+        f"RAM {_compact_memory(props.bake_peak_ram_mb)}"
+    )
+
+
 def _draw_domain(layout, scene, props):
     mode = active_mode()
     is_baking = mode == "baking"
@@ -231,9 +261,9 @@ def _draw_domain(layout, scene, props):
     if props.simulation_state == "baking":
         controls.label(text="Simulation is baking", icon="TIME")
     elif props.simulation_state == "baked":
-        controls.label(text=f"Baked: {props.baked_frames} frames", icon="CHECKMARK")
+        controls.label(text=_bake_summary(props, "Baked"), icon="CHECKMARK")
     elif props.simulation_state == "stopped":
-        controls.label(text=f"Stopped after {props.baked_frames} frames", icon="PAUSE")
+        controls.label(text=_bake_summary(props, "Stopped"), icon="PAUSE")
 
     preview = controls.row(align=True)
     play = preview.row(align=True)

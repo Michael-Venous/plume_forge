@@ -83,12 +83,16 @@ class PLUME_FORGE_OT_bake(FrameRangeJob, Operator):
             )
         except Exception as error:
             release_job(self)
+            self._restore_imported_volumes()
             self._cleanup_volume_staging()
             self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
         mark_bake_running(domain)
         domain.plume_forge.baked_frames = 0
+        domain.plume_forge.bake_elapsed = 0.0
+        domain.plume_forge.bake_peak_vram_mb = 0.0
+        domain.plume_forge.bake_peak_ram_mb = 0.0
         return self._start_modal(context)
 
     def _after_frame_complete(self, context, domain, completed, data, payload):
@@ -108,6 +112,7 @@ class PLUME_FORGE_OT_bake(FrameRangeJob, Operator):
         except Exception as error:
             if domain:
                 mark_bake_cancelled(domain)
+                self._store_bake_stats(domain)
             self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
@@ -116,7 +121,7 @@ class PLUME_FORGE_OT_bake(FrameRangeJob, Operator):
                 mark_bake_cancelled(domain)
             else:
                 mark_bake_complete(domain)
-            domain.plume_forge.bake_elapsed = time.monotonic() - self._started_at
+            self._store_bake_stats(domain)
             _activate(context, domain)
         self.report({"INFO"}, "Plume Forge bake stopped" if self._stop_requested else "Plume Forge bake complete")
         return {"FINISHED"}
@@ -127,8 +132,9 @@ class PLUME_FORGE_OT_bake(FrameRangeJob, Operator):
             invalidate_cache(domain)
             clear_preview(domain)
             mark_bake_cancelled(domain)
-            domain.plume_forge.bake_elapsed = time.monotonic() - self._started_at
         self._finish(context)
+        if domain:
+            self._store_bake_stats(domain)
         message = data.get("message", "Bake stopped")
         stderr = data.get("stderr") or self._worker.stderr()
         if stderr:
@@ -136,6 +142,13 @@ class PLUME_FORGE_OT_bake(FrameRangeJob, Operator):
         print(f"Plume Forge bake stopped: {message}")
         self.report({"ERROR"}, message)
         return {"CANCELLED"}
+
+    def _store_bake_stats(self, domain):
+        self._sample_memory(force=True)
+        props = domain.plume_forge
+        props.bake_elapsed = time.monotonic() - self._started_at
+        props.bake_peak_vram_mb = self._peak_vram_bytes / (1024.0 * 1024.0)
+        props.bake_peak_ram_mb = self._peak_ram_bytes / (1024.0 * 1024.0)
 
 
 class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
@@ -184,6 +197,7 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
             self._start_preview_session(context, domain, clear_preview_points=True)
         except Exception as error:
             release_job(self)
+            self._restore_imported_volumes()
             self._cleanup_volume_staging()
             self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
@@ -209,6 +223,7 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
             show_progress=False,
             keep_alive=True,
         )
+        self._hide_imported_volumes()
         self._session_signature = signature
         self._next_submit_at = 0.0
 
@@ -253,6 +268,7 @@ class PLUME_FORGE_OT_preview_play(FrameRangeJob, Operator):
             print(f"Plume Forge preview restarted for {domain.name}: session structure changed")
             if getattr(self, "_worker", None):
                 self._worker.close()
+            self._restore_imported_volumes()
             self._cleanup_volume_staging()
             self._started_at = time.monotonic()
             self._completed_frames = []
@@ -410,6 +426,8 @@ class PLUME_FORGE_OT_delete(Operator):
         domain.plume_forge.simulation_state = "idle"
         domain.plume_forge.baked_frames = 0
         domain.plume_forge.bake_elapsed = 0.0
+        domain.plume_forge.bake_peak_vram_mb = 0.0
+        domain.plume_forge.bake_peak_ram_mb = 0.0
         return {"FINISHED"}
 
 
@@ -432,6 +450,15 @@ class PLUME_FORGE_OT_stop(_ActiveBakeOperator, Operator):
         if job is None:
             self.report({"WARNING"}, "This domain has no active bake")
             return {"CANCELLED"}
+        if not getattr(job, "_accepted", False):
+            domain = bpy.data.objects.get(getattr(job, "_domain_name", ""))
+            job._stop_requested = True
+            _cancel_job(context, job)
+            if domain:
+                mark_bake_cancelled(domain)
+                job._store_bake_stats(domain)
+            self.report({"INFO"}, "Plume Forge bake stopped before simulation started")
+            return {"FINISHED"}
         job.request_stop(context)
         return {"FINISHED"}
 

@@ -4,10 +4,15 @@ import time
 
 import bpy
 
-from .bridge import BridgeWorker
+from .bridge import BridgeWorker, process_memory_bytes
 from .cache import cache_lock
 from .exporters import bridge_executable, build_frame, build_session
-from .importers import delete_generated_data, migrate_legacy_cache
+from .importers import (
+    delete_generated_data,
+    hide_generated_volumes,
+    migrate_legacy_cache,
+    restore_generated_volumes,
+)
 from .protocol import (
     CANCELLED,
     FAILED,
@@ -68,6 +73,10 @@ class FrameRangeJob:
         self._progress_start_frame = self._frame
         self._completed_frames = list(completed_frames or [])
         self._cache_lock = None
+        self._peak_ram_bytes = 0
+        self._peak_vram_bytes = 0
+        self._next_memory_sample = 0.0
+        self._track_metrics = bool(write_vdb)
 
         session, self._participants = build_session(
             context,
@@ -133,6 +142,8 @@ class FrameRangeJob:
         if event.type != "TIMER":
             return {"PASS_THROUGH"}
 
+        self._sample_memory()
+
         for message_type, data, payload in self._worker.poll():
             if message_type == READY:
                 continue
@@ -170,6 +181,14 @@ class FrameRangeJob:
                 if getattr(self, "_ignore_session_complete", False):
                     self._ignore_session_complete = False
                     continue
+                self._final_flush_ms = float(
+                    data.get("bridge_vdb_final_flush_ms", 0.0)
+                )
+                if self._final_flush_ms > 0.0:
+                    print(
+                        "Plume Forge VDB final flush: "
+                        f"{self._final_flush_ms:.3f}ms"
+                    )
                 return self._complete(context)
             if message_type in {CANCELLED, FAILED}:
                 return self._cancelled(context, data)
@@ -216,6 +235,7 @@ class FrameRangeJob:
         timing_packet = time.perf_counter()
         self._worker.send_frame(packet)
         timing_sent = time.perf_counter()
+        self._sample_memory(force=True)
         self._last_submit_timing = {
             "evaluate_ms": (timing_evaluated - timing_start) * 1000.0,
             "packet_ms": (timing_packet - timing_evaluated) * 1000.0,
@@ -234,6 +254,11 @@ class FrameRangeJob:
         domain = bpy.data.objects.get(self._domain_name)
         completed = int(data.get("frame", self._frame))
         self._completed_frames.append(completed)
+        self._peak_vram_bytes = max(
+            self._peak_vram_bytes,
+            int(data.get("flow_device_memory_bytes", 0)),
+        )
+        self._sample_memory(force=True)
         if domain:
             domain.plume_forge.baked_frames = len(self._completed_frames)
             if self._show_progress:
@@ -276,7 +301,12 @@ class FrameRangeJob:
             f"preview_upload={float(data.get('blender_preview_upload_ms', 0.0)):.3f}ms "
             f"points={int(data.get('bridge_exact_point_count', 0))} "
             f"point_setup={float(data.get('bridge_exact_point_setup_ms', 0.0)):.3f}ms "
-            f"vdb_queue={float(data.get('bridge_vdb_queue_wait_ms', 0.0)):.3f}ms "
+            f"vdb_copy={float(data.get('bridge_vdb_host_copy_ms', 0.0)):.3f}ms "
+            f"vdb_copy_rate={float(data.get('bridge_vdb_copy_gbps', 0.0)):.2f}GB/s "
+            f"vdb_alloc={float(data.get('bridge_vdb_allocation_ms', 0.0)):.3f}ms "
+            f"vdb_slot={float(data.get('bridge_vdb_staging_slot_wait_ms', 0.0)):.3f}ms "
+            f"vdb_budget={float(data.get('bridge_vdb_byte_budget_wait_ms', 0.0)):.3f}ms "
+            f"vdb_writer={float(data.get('bridge_vdb_queue_wait_ms', 0.0)):.3f}ms "
             f"vdb_convert={float(data.get('bridge_vdb_convert_ms', 0.0)):.3f}ms "
             f"vdb_file={float(data.get('bridge_vdb_file_write_ms', 0.0)):.3f}ms "
             f"vdb_mem={int(data.get('bridge_vdb_in_flight_bytes', 0)) / (1024 * 1024):.1f}MiB "
@@ -339,13 +369,47 @@ class FrameRangeJob:
             self._timer = None
         if self._show_progress:
             context.window_manager.progress_end()
+        self._sample_memory(force=True)
         if getattr(self, "_worker", None):
             self._worker.close()
+        self._restore_imported_volumes()
         self._cleanup_volume_staging()
         self._release_cache_lock()
         release_job(self)
         if self._restore_frame and context.scene.frame_current != self._original_frame:
             context.scene.frame_set(self._original_frame)
+
+    def _sample_memory(self, *, force=False):
+        if not self._track_metrics:
+            return
+        now = time.monotonic()
+        if not force and now < self._next_memory_sample:
+            return
+        self._next_memory_sample = now + 0.1
+        blender_bytes = process_memory_bytes(os.getpid())
+        worker = getattr(self, "_worker", None)
+        bridge_bytes = worker.memory_bytes() if worker else 0
+        self._peak_ram_bytes = max(
+            self._peak_ram_bytes,
+            blender_bytes + bridge_bytes,
+        )
+
+    def _hide_imported_volumes(self):
+        if getattr(self, "_hidden_imported_volumes", None) is not None:
+            return
+        self._hidden_imported_volumes = (
+            self._directory,
+            self._prefix,
+            hide_generated_volumes(self._directory, self._prefix),
+        )
+
+    def _restore_imported_volumes(self):
+        states = getattr(self, "_hidden_imported_volumes", None)
+        if states is None:
+            return
+        directory, prefix, volume_states = states
+        restore_generated_volumes(directory, prefix, volume_states)
+        self._hidden_imported_volumes = None
 
     def _cleanup_volume_staging(self):
         staging = getattr(self, "_volume_staging", None)

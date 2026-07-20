@@ -15,6 +15,29 @@ VOLUME_MARKER = "plume_forge_volume"
 VOLUME_PREFIX_MARKER = "plume_forge_volume_prefix"
 
 
+def hide_generated_volumes(directory, prefix=PREFIX):
+    """Hide this cache's imported volume and return enough state to restore it."""
+    normalized = os.path.normpath(directory)
+    hidden = []
+    for obj in bpy.data.objects:
+        if not _is_generated_volume(obj, normalized, prefix):
+            continue
+        hidden.append((obj.name, bool(obj.hide_viewport)))
+        obj.hide_viewport = True
+        obj.update_tag()
+    return hidden
+
+
+def restore_generated_volumes(directory, prefix, states):
+    normalized = os.path.normpath(directory)
+    for name, was_hidden in states:
+        obj = bpy.data.objects.get(name)
+        if obj is None or not _is_generated_volume(obj, normalized, prefix):
+            continue
+        obj.hide_viewport = was_hidden
+        obj.update_tag()
+
+
 def delete_generated_data(directory, prefix=PREFIX):
     normalized = os.path.normpath(directory)
     for obj in list(bpy.data.objects):
